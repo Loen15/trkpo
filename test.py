@@ -19,14 +19,17 @@ def parse_tree_string(tree_str):
             args_str = tree_str[5:-1]  
         elif tree_str.startswith("Div"):
             op = ast.Div()
-            args_str = tree_str[4:-1]  
+            args_str = tree_str[4:-1]
+        elif tree_str.startswith("Pow"):  
+            op = ast.Pow()
+            args_str = tree_str[4:-1]      
         else:
             # Если строка не начинается с операции
             try:
                 value = float(tree_str)
                 return ast.Constant(value=value)
             except ValueError:
-                raise ValueError(f"Неизвестная операция: {tree_str}")
+                raise ValueError(f"Неизвестная операция при тесте: {tree_str}")
 
         # Разделяем аргументы
         left_str, right_str = split_arguments(args_str)
@@ -76,7 +79,7 @@ def ast_to_str(node):
         op = type(node.op).__name__
         return f"{op}({operand})"
     else:
-        raise ValueError(f"Неподдерживаемый тип узла: {type(node)}")
+        raise ValueError(f"Неподдерживаемый тип узла при тесте: {type(node)}")
 
 class TestParser(unittest.TestCase):
     def test_expressions(self):
@@ -88,11 +91,12 @@ class TestParser(unittest.TestCase):
             ("8 / 9", "Div(8, 9)", None),
             ("10 - 200", "Sub(10, 200)", None),
             ("-34.5  / 6.78 + 901.2 * 0.345", "Add(Div(USub(34.5), 6.78), Mult(901.2, 0.345))", None),
+            ("3 ^ 4", "Pow(3, 4)", None),
+            ("7**8", "Pow(7, 8)", None),
+            ("(9 + 10) * 12", "Mult(Add(9, 10), 12)", None),
+            ("1.25e+03","1250.0", None),
             ("a", "Error", ValueError),
             ("6 /", "Error",  ValueError),
-            ("7**8", "Error", ValueError),
-            ("(9 + 10) * 12", "Error", ValueError),
-            ("3 ^ 4", "Error", ValueError),
             ("5 + 6j", "Error", ValueError),
 
         ]
@@ -126,7 +130,7 @@ class TestCalculator(unittest.TestCase):
             ("Div(3, Sub(4, 4))", "Error", ZeroDivisionError), 
             ("Div(1e300, 1e-300)", "Error", OverflowError)
         ]
-        print("\nТесты для вычислителя:")
+        print("\nТесты для вычислителя:\nСтатус\tВведенное выражение\tОжидаемый результат\tПолученный результат")
         
         for tree_str, expected, expected_exception in test_cases:
             try:
@@ -144,6 +148,41 @@ class TestCalculator(unittest.TestCase):
                 else:
                     status = "\u00D7"
             print(f"{status}\t{tree_str}\t\t\t{expected}\t\t\t{result}")
+            
+class TestIntegration(unittest.TestCase):
+    def test_integration(self):
+        test_cases = [
+            ("1 + 2", 3, None),
+            ("3 * 4", 12, None),
+            ("6 / 2", 3.0, None),
+            ("5 - 3", 2, None),
+            ("7 ^ 2", 49, None),  
+            ("2 + (3 * 4)", 14, None),
+            ("3.375e+09^(1/3)", 1499.9999999999993, None),
+            ("1 /", "Error", ValueError),
+            ("1 / 0", "Error", ZeroDivisionError),
+            ("5 + 6j", "Error", ValueError),
+        ]
+        
+        print("\nИнтеграционные тесты:\nСтатус\tВведенное выражение\tОжидаемый результат\tПолученный результат")
+        
+        for tree_str, expected, expected_exception in test_cases:
+            try:
+                # Преобразуем строку с деревом выражений в AST
+                tree = parse(tree_str)
+                result = calculate(tree)
+                if expected_exception is not None:
+                    status = "\u00D7"
+                else:
+                    status = "\u2713" if result == expected else "\u00D7"
+            except Exception as e:
+                result = str(e)
+                if expected_exception is not None and isinstance(e, expected_exception):
+                    status = "\u2713"
+                else:
+                    status = "\u00D7"
+            print(f"{status}\t{tree_str}\t\t\t{expected}\t\t\t{result}")
+        
 
 if __name__ == "__main__":
     unittest.main() 

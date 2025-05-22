@@ -16,7 +16,8 @@ operators = {
     ast.Sub: op.sub, # -
     ast.Mult: op.mul, # *
     ast.Div: op.truediv, # /
-    ast.USub: op.neg, # унарный - 
+    ast.USub: op.neg, # унарный -
+    ast.Pow: op.pow # возведение в степень  
 }
 
 def parse(expression):
@@ -24,20 +25,22 @@ def parse(expression):
         # Запрещаем пробелы между цифрами, в том числе вида 1e 10
         if re.search(r"\d\s+\d", expression) or re.search(r"e\s+\d", expression) or re.search(r"\d\s+e", expression):
             raise ValueError("Пробел между цифрами не допускается.")
+        
         # Удаляем лишние пробелы
         expression = " ".join(expression.split())
-        # Запрещаем скобки,и возведение в степень **, ^ и символы кроме цифр и 'e'
-        if "(" in expression or ")" in expression:
-            raise ValueError("Выражение содержит скобки, которые не поддерживаются.")
+        
+        # Запрещаем символы кроме цифр и 'e'
         if any(c.isalpha() and c not in 'eE' for c in expression):
             raise ValueError("Выражение содержит неверные символы")
-        if "**" in expression or "^" in expression:
-            raise ValueError("Степень не поддерживается")
+          
+        # Заменяем ^ на ** для корректной работы
+        expression = expression.replace('^', '**')
+        
         # Преобразуем выражение в дерево AST
         tree = ast.parse(expression, mode='eval')
         return tree.body
     except (SyntaxError, TypeError, KeyError, ValueError) as e:
-        raise ValueError(f"Некорректное выражение: {e}")
+        raise ValueError(f"Ошибка парсера: Некорректное выражение: {e}")
 
 def evaluate(node):
     #Рекурсивно обрабатываем AST-узлы
@@ -51,7 +54,7 @@ def evaluate(node):
         operand = evaluate(node.operand)
         return operators[type(node.op)](operand)
     else:
-        raise TypeError("Неверное выражение")
+        raise TypeError("Ошибка вычислителя: Неверное выражение")
 
 def calculate(expression):
     try:
@@ -64,14 +67,14 @@ def calculate(expression):
         result = evaluate(tree)
         # Проверяем полученный результат на переполнение
         if math.isinf(result) or math.isnan(result):
-            raise OverflowError("Арифметическое переполнение.")
+            raise OverflowError("Ошибка вычислителя: Арифметическое переполнение.")
         return result
     except (SyntaxError, TypeError, KeyError) as e:
-        raise ValueError(f"Некорректное выражение: {e}")
+        raise ValueError(f"Ошибка вычислителя: {e}")
     except ZeroDivisionError:
-        raise ZeroDivisionError("Деление на ноль.")
+        raise ZeroDivisionError("Ошибка вычислителя: Деление на ноль.")
     except OverflowError:
-        raise OverflowError("Арифметическое переполнение.")
+        raise OverflowError("Ошибка вычислителя: Арифметическое переполнение.")
 
 if __name__ == "__main__":
     args = parser.parse_args()  
